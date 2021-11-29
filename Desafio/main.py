@@ -1,49 +1,36 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from typing import List
 import json
 import requests
-import datetime
+
 
 appIndi = FastAPI()
 
-
+#Parametros de entrada necesarios.
 class DatosIndi(BaseModel):
-    indi: str
-    date: datetime.date
-
-@appIndi.get("/indicadores/{indicador}/{year}")
-def getIndicadores(indicador, year):
-
-    DatosIndi.indi = indicador
-    DatosIndi.date = year 
+    #Listado de indicadores comerciales    
+    indicadores: List[str] = []
+    #Año de consulta
+    date: str
     
-    # En este caso hacemos la solicitud para el caso de consulta de un indicador en un año determinado
-    url = f'https://mindicador.cl/api/{DatosIndi.indi}/{DatosIndi.date}'
-    response = requests.get(url)
-    data = json.loads(response.text.encode("utf-8"))
-    # Para que el json se vea ordenado, retornar pretty_json
-    pretty_json = json.dumps(data, indent=2)
-    return data
+#Metodo encargado de obtener 3 o más indicadores por año solicitado.
+@appIndi.post("/indicadores")
+def getMinIndicadores(datos: DatosIndi):    
+    #Lista para almacenar datos de salida
+    result = []
 
-@appIndi.get("/indicadores/{indicador}/")
-def getOnlyIndicadores(indicador):
+    #Validar que los indicadores comerciales sean minimo 3
+    if len(datos.indicadores) < 3:
+        return "Debe ingresar 3 o más indicacores."
 
-    DatosIndi.indi = indicador
-    # En este caso hacemos la solicitud para el caso de consulta de un indicador en un año determinado
-    url = f'https://mindicador.cl/api/{DatosIndi.indi}/'
-    response = requests.get(url)
-    data = json.loads(response.text.encode("utf-8"))
-    # Para que el json se vea ordenado, retornar pretty_json
-    pretty_json = json.dumps(data, indent=2)
-    return data
-
-@appIndi.get("/indicadores/")
-def getAllIndicadores():    
-    
-    # En este caso hacemos la solicitud para el caso de consulta de un indicador en un año determinado
-    url = f'https://mindicador.cl/api/'
-    response = requests.get(url)
-    data = json.loads(response.text.encode("utf-8"))
-    # Para que el json se vea ordenado, retornar pretty_json
-    pretty_json = json.dumps(data, indent=2)
-    return data
+    #Se recorre listado de indicadores solicitados
+    for indi in datos.indicadores:
+        # Se llama al servicio.
+        url = f'https://mindicador.cl/api/{indi}/{datos.date}'
+        response = requests.get(url)
+        data = json.loads(response.text.encode("utf-8"))
+        #Se lista lo obtenido
+        result.append(data)
+    #Se retorna listado de lo solicitado      
+    return result
